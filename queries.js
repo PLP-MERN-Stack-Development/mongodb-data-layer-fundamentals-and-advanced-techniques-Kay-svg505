@@ -1,99 +1,119 @@
-// queries.js - MongoDB Queries for PLP Bookstore
-// -----------------------------------------------
-// This script performs various CRUD operations, advanced queries,
-// aggregations, and indexing on the `books` collection created by `insert_books.js`.
+// queries.js
+// MongoDB Queries for PLP Bookstore Project
+// Author: Joy Mwongera
 
-// 1️⃣ Switch to the correct database
-use("plp_bookstore");
+/*
+============================================================
+📘 Task 2: Basic CRUD Operations
+============================================================
+*/
 
-// ===============================================================
-// 🧱 BASIC CRUD OPERATIONS
-// ===============================================================
+// 1️⃣ Find all books in a specific genre
+db.books.find({ genre: "Fiction" });
 
-// Insert a new book
-db.books.insertOne({
-  title: "The Invisible Man",
-  author: "H. G. Wells",
-  genre: "Science Fiction",
-  published_year: 1897,
-  price: 9.75,
-  in_stock: true,
-  pages: 192,
-  publisher: "C. Arthur Pearson"
-});
+// 2️⃣ Find books published after a certain year (e.g., 1950)
+db.books.find({ published_year: { $gt: 1950 } });
 
-// Find all books
-db.books.find().pretty();
+// 3️⃣ Find books by a specific author
+db.books.find({ author: "George Orwell" });
 
-// Find books by a specific author
-db.books.find({ author: "George Orwell" }).pretty();
-
-// Update a book’s stock status
+// 4️⃣ Update the price of a specific book
 db.books.updateOne(
-  { title: "Brave New World" },
-  { $set: { in_stock: true } }
+  { title: "1984" },
+  { $set: { price: 13.99 } }
 );
 
-// Delete a book by title
+// 5️⃣ Delete a book by its title
 db.books.deleteOne({ title: "Moby Dick" });
 
-// ===============================================================
-// 🔍 ADVANCED QUERIES (FILTERING & SORTING)
-// ===============================================================
+/*
+============================================================
+📗 Task 3: Advanced Queries
+============================================================
+*/
 
-// Find books published after 1950
-db.books.find({ published_year: { $gt: 1950 } }).pretty();
+// 6️⃣ Find books that are both in stock and published after 2010
+db.books.find({ in_stock: true, published_year: { $gt: 2010 } });
 
-// Find all Fiction books under $12
-db.books.find({
-  genre: "Fiction",
-  price: { $lt: 12 }
-}).pretty();
+// 7️⃣ Use projection to return only title, author, and price fields
+db.books.find({}, { title: 1, author: 1, price: 1, _id: 0 });
 
-// Find all in-stock books sorted by published_year (newest first)
-db.books.find({ in_stock: true }).sort({ published_year: -1 }).pretty();
+// 8️⃣ Sort books by price in ascending order
+db.books.find().sort({ price: 1 });
 
-// Find books with page count between 200 and 400
-db.books.find({
-  pages: { $gte: 200, $lte: 400 }
-}).pretty();
+// 9️⃣ Sort books by price in descending order
+db.books.find().sort({ price: -1 });
 
-// ===============================================================
-// 📊 AGGREGATION PIPELINES
-// ===============================================================
+// 🔟 Implement pagination (limit & skip) — 5 books per page
+// Page 1
+db.books.find().limit(5);
+// Page 2
+db.books.find().skip(5).limit(5);
 
-// Group books by genre and count how many in each
+/*
+============================================================
+📙 Task 4: Aggregation Pipeline
+============================================================
+*/
+
+// 11️⃣ Calculate the average price of books by genre
 db.books.aggregate([
-  { $group: { _id: "$genre", total_books: { $sum: 1 } } },
-  { $sort: { total_books: -1 } }
-]);
-
-// Calculate the average price of books per genre
-db.books.aggregate([
-  { $group: { _id: "$genre", average_price: { $avg: "$price" } } },
+  {
+    $group: {
+      _id: "$genre",
+      average_price: { $avg: "$price" },
+      total_books: { $sum: 1 }
+    }
+  },
   { $sort: { average_price: -1 } }
 ]);
 
-// Find the top 3 most expensive books
+// 12️⃣ Find the author with the most books in the collection
 db.books.aggregate([
-  { $sort: { price: -1 } },
-  { $limit: 3 },
-  { $project: { title: 1, author: 1, price: 1, _id: 0 } }
+  {
+    $group: {
+      _id: "$author",
+      total_books: { $sum: 1 }
+    }
+  },
+  { $sort: { total_books: -1 } },
+  { $limit: 1 }
 ]);
 
-// ===============================================================
-// ⚡ INDEXING FOR PERFORMANCE
-// ===============================================================
+// 13️⃣ Group books by publication decade and count them
+db.books.aggregate([
+  {
+    $addFields: {
+      decade: { $multiply: [{ $floor: { $divide: ["$published_year", 10] } }, 10] }
+    }
+  },
+  {
+    $group: {
+      _id: "$decade",
+      count: { $sum: 1 }
+    }
+  },
+  { $sort: { _id: 1 } }
+]);
 
-// Create an index on author for faster search
-db.books.createIndex({ author: 1 });
+/*
+============================================================
+📘 Task 5: Indexing
+============================================================
+*/
 
-// Create a compound index on genre and price
-db.books.createIndex({ genre: 1, price: -1 });
+// 14️⃣ Create an index on the title field for faster searches
+db.books.createIndex({ title: 1 });
 
-// Check all created indexes
-db.books.getIndexes();
+// 15️⃣ Create a compound index on author and published_year
+db.books.createIndex({ author: 1, published_year: -1 });
 
-// ===============================================================
-// ✅ END OF FILE
-// ===============================================================
+// 16️⃣ Use explain() to show performance improvement with indexing
+db.books.find({ title: "The Hobbit" }).explain("executionStats");
+
+/*
+============================================================
+✅ End of queries.js
+============================================================
+*/
+
